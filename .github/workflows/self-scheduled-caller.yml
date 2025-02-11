@@ -7,7 +7,7 @@ on:
     - cron: "17 2 * * *"
   push:
     branches:
-      - refactor-from-pretrained-2
+      - refactor-from-pretrained
 
 jobs:
   model-ci:
