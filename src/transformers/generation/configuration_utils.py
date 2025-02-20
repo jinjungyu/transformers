@@ -87,6 +87,7 @@ class GenerationMode(ExplicitEnum):
     GREEDY_SEARCH = "greedy_search"
     SAMPLE = "sample"
     ASSISTED_GENERATION = "assisted_generation"
+    CONTRASTIVE_GENERATION = "contrastive_generation"
     DOLA_GENERATION = "dola_generation"
     # Beam methods
     BEAM_SEARCH = "beam_search"
@@ -495,6 +496,9 @@ class GenerationConfig(PushToHubMixin):
         self._commit_hash = kwargs.pop("_commit_hash", None)
         self.transformers_version = kwargs.pop("transformers_version", __version__)
 
+        # added for constrative decoding
+        self.cd_temperature = kwargs.pop("cd_temperature", 0.0)
+        
         # Additional attributes without default values
         if not self._from_model_config:
             # we don't want to copy values from the model config if we're initializing a `GenerationConfig` from a
@@ -560,19 +564,29 @@ class GenerationConfig(PushToHubMixin):
             else:
                 generation_mode = GenerationMode.BEAM_SEARCH
 
-        # Assisted generation may extend some generation modes
-        if (
-            assistant_model is not None
-            or self.prompt_lookup_num_tokens is not None
-            or self.assistant_early_exit is not None
-        ):
-            if generation_mode in ("greedy_search", "sample"):
-                generation_mode = GenerationMode.ASSISTED_GENERATION
-            else:
-                raise ValueError(
-                    "You've set `assistant_model`, which triggers assisted generate. Currently, assisted generate "
-                    "is only supported with Greedy Search and Sample."
-                )
+        if assistant_model is not None:
+            # Assisted generation may extend some generation modes
+            if (
+                self.prompt_lookup_num_tokens is not None
+                or self.assistant_early_exit is not None
+            ):
+                if generation_mode in ("greedy_search", "sample"):
+                    generation_mode = GenerationMode.ASSISTED_GENERATION
+                else:
+                    raise ValueError(
+                        "You've set `assistant_model`, which triggers assisted generate. Currently, assisted generate "
+                        "is only supported with Greedy Search and Sample."
+                    )
+                    
+            # Contrastive decoding
+            elif self.cd_temperature > 0.0:
+                if generation_mode in ("greedy_search", "sample"):
+                    generation_mode = GenerationMode.CONTRASTIVE_GENERATION
+                else:
+                    raise ValueError(
+                        "You've set `cd_temperature`, which triggers assisted generate. Currently, Contrastive generate "
+                        "is only supported with Greedy Search and Sample."
+                    )
 
         # DoLa generation may extend some generation modes
         if self.dola_layers is not None:

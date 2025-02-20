@@ -2939,3 +2939,12 @@ class SynthIDTextWatermarkLogitsProcessor(LogitsProcessor):
             The expected mean g-value for watermarked text.
         """
         return coinflip_prob + coinflip_prob * (1 - coinflip_prob) * (1 - (1 / vocab_size))
+
+class CDLogitsWarper(LogitsProcessor):
+    def __init__(self, temperature: float = 0.0):
+        self.temperature = temperature
+
+    @add_start_docstrings(LOGITS_PROCESSOR_INPUTS_DOCSTRING)
+    def __call__(self, scores: torch.FloatTensor, c_scores: torch.FloatTensor) -> torch.FloatTensor:
+        # import code; code.interact('CDLogitsWarper', local=dict(globals(), **locals()))
+        return scores - self.temperature * c_scores
